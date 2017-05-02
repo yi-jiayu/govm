@@ -6,6 +6,7 @@ import (
 	"github.com/urfave/cli"
 	"io/ioutil"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 )
@@ -25,24 +26,29 @@ func IsSymlink(fi os.FileInfo) bool {
 }
 
 func InstalledGoVersions() ([]string, error) {
-	installedVersions := []string{}
+	iv := []string{}
+
+	abs, err := filepath.Abs(GOROOT)
+	if err != nil {
+		return iv, err
+	}
 
 	// look for folders in dirname GOROOT starting with "Go"
-	dirname := filepath.Dir(GOROOT)
+	dirname := filepath.Dir(abs)
 	files, err := ioutil.ReadDir(dirname)
 	if err != nil {
-		return installedVersions, err
+		return iv, err
 	}
 
 	for _, file := range files {
 		if file.IsDir() && strings.HasPrefix(file.Name(), "Go") {
 			if len(file.Name()) > 2 {
-				installedVersions = append(installedVersions, file.Name()[2:])
+				iv = append(iv, file.Name()[2:])
 			}
 		}
 	}
 
-	return installedVersions, nil
+	return iv, nil
 }
 
 func CurrentGoVersion() (string, error) {
@@ -68,12 +74,12 @@ func CurrentGoVersion() (string, error) {
 		return cv, errors.New("GOROOT is not a symlink")
 	}
 
-	path, err := filepath.EvalSymlinks(GOROOT)
+	p, err := filepath.EvalSymlinks(GOROOT)
 	if err != nil {
 		return cv, err
 	}
 
-	target, err := filepath.Abs(path)
+	target, err := filepath.Abs(p)
 	if err != nil {
 		return cv, err
 	}
@@ -128,6 +134,58 @@ func List(c *cli.Context) error {
 	return nil
 }
 
+func GoVersionOutput() (string, error) {
+	var gv string
+
+	cmd2 := exec.Command("go", "version")
+	cmd2.Stderr = os.Stderr
+
+	outp, err := cmd2.Output()
+	if err != nil {
+		return gv, err
+	}
+
+	return string(outp), nil
+}
+
+func SwitchGoVersion(tv string) error {
+	absGOROOT, err := filepath.Abs(GOROOT)
+	if err != nil {
+		return err
+	}
+
+	cv, err := CurrentGoVersion()
+	if err != nil {
+		return err
+	}
+
+	if cv != "" {
+		// delete current Go symlink
+		cmd := exec.Command("cmd", fmt.Sprintf("/c rmdir %s", absGOROOT))
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stdin
+
+		err = cmd.Run()
+		if err != nil {
+			return err
+		}
+	}
+
+	// create new go symlink
+	target := filepath.Join(filepath.Dir(absGOROOT), "Go"+tv)
+
+	cmd := exec.Command("cmd", fmt.Sprintf("/c mklink /d %s %s", absGOROOT, target))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stdin
+
+	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func Use(c *cli.Context) error {
 	// 1. check if CurrentGoVersion is valid in our context
 	// 2. delete GOROOT if CurrentGoVersion is not empty
@@ -144,8 +202,13 @@ func Use(c *cli.Context) error {
 
 	tv := c.Args().Get(0)
 
-	fmt.Printf("Current Go version is: %s\n", cv)
-	fmt.Printf("You are trying to use Go version: %s\n", tv)
+	gv, err := GoVersionOutput()
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Now using: %s", string(gv))
+	fmt.Printf("You are trying to switch to Go version: %s\n", tv)
 
 	vs, err := InstalledGoVersions()
 	if err != nil {
@@ -167,7 +230,18 @@ func Use(c *cli.Context) error {
 			return nil
 		} else {
 			fmt.Printf("Changing to Go version %s...\n", tv)
-			fmt.Fprintln(os.Stderr, "not implemented")
+
+			err := SwitchGoVersion(tv)
+			if err != nil {
+				return err
+			}
+
+			gv, err := GoVersionOutput()
+			if err != nil {
+				return err
+			}
+
+			fmt.Printf("Now using: %s", string(gv))
 
 			return nil
 		}
@@ -180,12 +254,12 @@ func Use(c *cli.Context) error {
 
 func Root(c *cli.Context) error {
 	if c.NArg() == 0 {
-		fp, err := filepath.Abs(GOROOT)
+		abs, err := filepath.Abs(GOROOT)
 		if err != nil {
 			return err
 		}
 
-		fmt.Printf("GOROOT is currently set to: %s\n", fp)
+		fmt.Printf("GOROOT is currently set to: %s\n", abs)
 
 		return nil
 	} else if c.NArg() == 1 {
@@ -201,12 +275,12 @@ func Root(c *cli.Context) error {
 func main() {
 	app := cli.NewApp()
 	app.Name = "gvm"
-	app.Version = "0.1.0"
+	app.Version = "0.2.0"
 	app.Commands = []cli.Command{
 		{
 			Name:    "install",
 			Aliases: []string{"i"},
-			Usage:   "Install a new Go version",
+			Usage:   "Install a new Go version (not implemented)",
 			Action: func(c *cli.Context) error {
 				fmt.Fprintln(os.Stderr, "not implemented")
 				return nil
@@ -225,7 +299,7 @@ func main() {
 		},
 		{
 			Name:      "use",
-			Usage:     "Switch to the specified Go version",
+			Usage:     "Switch the active Go version",
 			ArgsUsage: "[version]",
 			Action:    Use,
 		},
@@ -233,7 +307,8 @@ func main() {
 			Name:  "version",
 			Usage: "Display the current gvm version",
 			Action: func(c *cli.Context) error {
-				fmt.Fprintln(os.Stderr, "not implemented")
+				cli.ShowVersion(c)
+
 				return nil
 			},
 		},
