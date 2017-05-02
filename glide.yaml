@@ -1,4 +1,4 @@
-package: yi-jiayu/gvm
+package: github.com/yi-jiayu/govm
 import:
-- package: github.com/urfave/cli
-  version: ~1.19.1
+- package: github.com/spf13/cobra
+- package: github.com/spf13/viper
