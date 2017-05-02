@@ -274,7 +274,7 @@ func Root(c *cli.Context) error {
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "gvm"
+	app.Name = "govm"
 	app.Version = "0.2.0"
 	app.Commands = []cli.Command{
 		{
@@ -305,7 +305,7 @@ func main() {
 		},
 		{
 			Name:  "version",
-			Usage: "Display the current gvm version",
+			Usage: "Display the current govm version",
 			Action: func(c *cli.Context) error {
 				cli.ShowVersion(c)
 
