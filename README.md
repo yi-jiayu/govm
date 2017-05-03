@@ -5,9 +5,12 @@ Manage multiple Go installations on Windows
 Yes, I realise that there's not much need to manage multiple Go versions, but for a point in time I was struggling with various errors while building a Go on Google App Engine Standard Environment project and I thought that maybe using Go 1.6, which Go on Google App Engine runs, might help (it didn't).
 
 ## Installation
+`go install -v github.com/yi-jiayu/govm` to clone this repository under `GOPATH/src/github.com/yi-jiayu/govm` and place a govm executable into `GOPATH/bin`.
+
+Alternatively,
 1. `go get -v github.com/yi-jiayu/govm` to clone the source into your GOPATH.
 2. `cd` into the source directory: `cd $env:GOPATH/github.com/yi-jiayu/govm` (PowerShell) or `cd $GOPATH/github.com/yi-jiayu/govm` (Bash)
-3. `go build` to compile the govm binary.
+3. `go build` to compile the govm binary locally.
 
 ## Assumptions
 In order to limit the amount of magic done by this program, govm makes a few assumptions about your environment and will work best when these assumptions hold. govm tries to be conservative and not do anything if these assumptions are wrong, but certain assumptions such as assuming `basename $GOROOT` to be "Go" are hardcoded.
