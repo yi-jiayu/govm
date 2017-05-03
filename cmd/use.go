@@ -10,7 +10,7 @@ import (
 // useCmd represents the use command
 var useCmd = &cobra.Command{
 	Use:   "use [version]",
-	Short: "A brief description of your command",
+	Short: "Switch to a different Go version",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -27,16 +27,21 @@ to quickly create a Cobra application.`,
 			return cmd.Usage()
 		}
 
-		tv := args[0]
+		version := args[0]
+
+		// validate version
+		if !lib.ValidateSemver(version) {
+			fmt.Printf("%s is not a valid Go version string.\n", version)
+			return nil
+		}
 
 		gv, err := lib.GoVersionOutput()
 		if err != nil {
 			return err
 		}
 
-
 		fmt.Printf("Now using: %s", string(gv))
-		fmt.Printf("You are trying to switch to Go version: %s\n", tv)
+		fmt.Printf("You are trying to switch to Go version: %s\n", version)
 
 		vs, err := lib.InstalledGoVersions()
 		if err != nil {
@@ -45,21 +50,21 @@ to quickly create a Cobra application.`,
 
 		found := false
 		for _, v := range vs {
-			if v == tv {
+			if v == version {
 				found = true
 				break
 			}
 		}
 
 		if found {
-			if cv == tv {
+			if cv == version {
 				fmt.Printf("Go version %s is already the currently active version.\n", cv)
 
 				return nil
 			} else {
-				fmt.Printf("Changing to Go version %s...\n", tv)
+				fmt.Printf("Changing to Go version %s...\n", version)
 
-				err := lib.SwitchGoVersion(tv)
+				err := lib.SwitchGoVersion(version)
 				if err != nil {
 					return err
 				}
@@ -74,7 +79,7 @@ to quickly create a Cobra application.`,
 				return nil
 			}
 		} else {
-			fmt.Printf("Go version %s is not currently installed.\n", tv)
+			fmt.Printf("Go version %s is not currently installed.\n", version)
 
 			return nil
 		}

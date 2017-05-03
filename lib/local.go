@@ -1,13 +1,16 @@
 package lib
 
 import (
-	"os"
-	"path/filepath"
-	"io/ioutil"
-	"strings"
+	"archive/zip"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"os"
 	"os/exec"
+	"path/filepath"
+	"strings"
 )
 
 const (
@@ -167,6 +170,96 @@ func SwitchGoVersion(tv string) error {
 	cmd.Stderr = os.Stdin
 
 	err = cmd.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func ExtractDownloadedGoVersion(dl string) (string, error) {
+	var target string
+
+	target, err := ioutil.TempDir("", "govm-install-")
+	if err != nil {
+		return target, err
+	}
+
+	reader, err := zip.OpenReader(dl)
+	if err != nil {
+		return target, err
+	}
+	defer reader.Close()
+
+	for _, file := range reader.File {
+		var name string
+		if !strings.HasPrefix(file.Name, "go") {
+			return target, errors.New("unexpected file in archive")
+		} else {
+			name = strings.TrimPrefix(file.Name, "go")
+		}
+
+		path := filepath.Join(target, name)
+
+		if file.FileInfo().IsDir() {
+			os.MkdirAll(path, file.Mode())
+		} else {
+			// read file in zip
+			fr, err := file.Open()
+			if err != nil {
+				return target, err
+			}
+			defer fr.Close()
+
+			// create file to be written to
+			os.MkdirAll(filepath.Dir(path), file.Mode())
+			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
+			if err != nil {
+				return target, err
+			}
+			defer f.Close()
+
+			//log.Printf("extracting %s to %s\n", file.Name, path)
+			_, err = io.Copy(f, fr)
+			if err != nil {
+				return target, err
+			}
+		}
+	}
+
+	log.Printf("extracted %s to %s", dl, target)
+	return target, nil
+}
+
+func InstallGoVersion(version, source string) error {
+	if !ValidateSemver(version) {
+		return errors.New("invalid version string")
+	}
+
+	dest := filepath.Join(filepath.Dir(goroot), "Go"+version)
+	_, err := os.Lstat(dest)
+	if err == nil || !os.IsNotExist(err) {
+		return errors.New("destination already exists")
+	}
+
+	log.Printf("Installing to %s...\n", dest)
+	err = os.Rename(source, dest)
+	if err != nil {
+		return err
+	}
+
+	log.Printf("renamed %s to %s", source, dest)
+	return nil
+}
+
+func UninstallGoVersion(version string) error {
+	if !ValidateSemver(version) {
+		return errors.New("invalid version string")
+	}
+
+	path := filepath.Join(filepath.Dir(goroot), "Go"+version)
+
+	err := os.RemoveAll(path)
 	if err != nil {
 		return err
 	}

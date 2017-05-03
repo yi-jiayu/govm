@@ -31,6 +31,19 @@ to quickly create a Cobra application.`,
 			cmd.Help()
 		}
 	},
+
+	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
+		v, err := cmd.Flags().GetBool("verbose")
+		if err != nil {
+			return err
+		}
+
+		if !v {
+			os.Stderr.Close()
+		}
+
+		return nil
+	},
 }
 
 // Execute adds all child commands to the root command sets flags appropriately.
@@ -50,9 +63,11 @@ func init() {
 	// will be global for your application.
 
 	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.govm.yaml)")
+	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "Print additional output")
+
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
-	RootCmd.Flags().BoolP("version", "v", false, "Show version information")
+	RootCmd.Flags().Bool("version", false, "Show version information")
 }
 
 // initConfig reads in config file and ENV variables if set.
