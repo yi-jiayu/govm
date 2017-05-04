@@ -4,9 +4,8 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/yi-jiayu/govm/version"
 )
-
-var version = "0.4.0"
 
 // versionCmd represents the version command
 var versionCmd = &cobra.Command{
@@ -24,7 +23,7 @@ to quickly create a Cobra application.`,
 }
 
 func PrintVersion() {
-	fmt.Printf("govm version %s\n", version)
+	fmt.Printf("govm version %s\n", version.VERSION)
 }
 
 func init() {

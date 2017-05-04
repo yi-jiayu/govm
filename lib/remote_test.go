@@ -3,7 +3,6 @@ package lib
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
 )
 

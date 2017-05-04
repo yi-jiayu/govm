@@ -9,8 +9,9 @@ import (
 
 // listCmd represents the list command
 var listCmd = &cobra.Command{
-	Use:   "list",
-	Short: "List installed Go versions",
+	Use:     "list",
+	Aliases: []string{"ls"},
+	Short:   "List installed Go versions",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 

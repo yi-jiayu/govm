@@ -2,6 +2,7 @@ package lib
 
 import (
 	"archive/zip"
+	"bytes"
 	"errors"
 	"fmt"
 	"io"
@@ -18,6 +19,8 @@ const (
 
 var (
 	goroot = Goroot()
+
+	PermissionDenied = errors.New("permission denied")
 )
 
 func Goroot() string {
@@ -35,6 +38,40 @@ func Goroot() string {
 
 func IsSymlink(fi os.FileInfo) bool {
 	return fi.Mode()&os.ModeSymlink != 0
+}
+
+func CreateSymbolicLink(path, target string) error {
+	var stderr bytes.Buffer
+
+	cmd := exec.Command("cmd", fmt.Sprintf("/c mklink /d %s %s", path, target))
+	cmd.Stderr = &stderr
+
+	err := cmd.Run()
+	if err != nil {
+		if strings.Contains(stderr.String(), "You do not have sufficient privilege to perform this operation.") {
+			return PermissionDenied
+		} else {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func CreateSymbolicLinkWithElevation(path, target string) error {
+	powershellCmd := fmt.Sprintf(`Start-Process cmd -Wait -Verb RunAs -ArgumentList "cmd /c mklink /d %s %s"`, path, target)
+
+	name := "powershell"
+	args := []string{"-NoProfile", "-Command", powershellCmd}
+
+	c := exec.Command(name, args...)
+
+	err := c.Run()
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func InstalledGoVersions() ([]string, error) {
@@ -130,12 +167,12 @@ func GoVersionOutput() (string, error) {
 	cmd2 := exec.Command("go", "version")
 	cmd2.Stderr = os.Stderr
 
-	outp, err := cmd2.Output()
+	output, err := cmd2.Output()
 	if err != nil {
 		return gv, err
 	}
 
-	return string(outp), nil
+	return string(output), nil
 }
 
 func SwitchGoVersion(tv string) error {
@@ -152,8 +189,6 @@ func SwitchGoVersion(tv string) error {
 	if cv != "" {
 		// delete current Go symlink
 		cmd := exec.Command("cmd", fmt.Sprintf("/c rmdir %s", abs))
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stdin
 
 		err = cmd.Run()
 		if err != nil {
@@ -164,13 +199,16 @@ func SwitchGoVersion(tv string) error {
 	// create new go symlink
 	target := filepath.Join(filepath.Dir(abs), "Go"+tv)
 
-	cmd := exec.Command("cmd", fmt.Sprintf("/c mklink /d %s %s", abs, target))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stdin
-
-	err = cmd.Run()
+	err = CreateSymbolicLink(abs, target)
 	if err != nil {
-		return err
+		if err == PermissionDenied {
+			err := CreateSymbolicLinkWithElevation(abs, target)
+			if err != nil {
+				return err
+			}
+		} else {
+			return err
+		}
 	}
 
 	return nil
