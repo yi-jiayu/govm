@@ -6,6 +6,7 @@ import (
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"github.com/yi-jiayu/govm/lib"
 )
 
 var cfgFile string
@@ -38,8 +39,8 @@ to quickly create a Cobra application.`,
 			return err
 		}
 
-		if !v {
-			os.Stderr.Close()
+		if v {
+			lib.SetVerbose(true)
 		}
 
 		return nil

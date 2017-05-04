@@ -4,7 +4,6 @@ import (
 	"errors"
 	"io"
 	"io/ioutil"
-	"log"
 	"net"
 	"net/http"
 	"regexp"
@@ -81,7 +80,7 @@ func DownloadRemoteVersion(version string) (string, error) {
 		return dl, errors.New("status code error")
 	}
 
-	log.Printf("downloaded %d bytes from %s\n", resp.ContentLength, uri)
+	logger.Printf("downloaded %d bytes from %s\n", resp.ContentLength, uri)
 
 	n, err := io.Copy(temp, resp.Body)
 	if err != nil {
@@ -89,6 +88,6 @@ func DownloadRemoteVersion(version string) (string, error) {
 	}
 	dl = temp.Name()
 
-	log.Printf("copied %d bytes to %s\n", n, dl)
+	logger.Printf("copied %d bytes to %s\n", n, dl)
 	return dl, nil
 }

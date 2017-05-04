@@ -61,14 +61,12 @@ to quickly create a Cobra application.`,
 		}
 
 		// uninstall
-		fmt.Printf("Uninstalling Go %s...", version)
+		fmt.Printf("Uninstalling Go %s...\n", version)
 		err = lib.UninstallGoVersion(version)
 		if err != nil {
-			fmt.Println()
 			return err
-		} else {
-			fmt.Println(" Done!")
 		}
+		fmt.Println("Done!")
 
 		fmt.Printf("Go version %s successfully uninstalled.\n", version)
 		return nil

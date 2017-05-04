@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -191,10 +190,11 @@ func ExtractDownloadedGoVersion(dl string) (string, error) {
 	}
 	defer reader.Close()
 
-	for _, file := range reader.File {
+	// closure so that we don't run out of file descriptors
+	extract := func(file *zip.File) error {
 		var name string
 		if !strings.HasPrefix(file.Name, "go") {
-			return target, errors.New("unexpected file in archive")
+			return errors.New("unexpected file in archive")
 		} else {
 			name = strings.TrimPrefix(file.Name, "go")
 		}
@@ -207,7 +207,7 @@ func ExtractDownloadedGoVersion(dl string) (string, error) {
 			// read file in zip
 			fr, err := file.Open()
 			if err != nil {
-				return target, err
+				return err
 			}
 			defer fr.Close()
 
@@ -215,19 +215,28 @@ func ExtractDownloadedGoVersion(dl string) (string, error) {
 			os.MkdirAll(filepath.Dir(path), file.Mode())
 			f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, file.Mode())
 			if err != nil {
-				return target, err
+				return err
 			}
 			defer f.Close()
 
-			//log.Printf("extracting %s to %s\n", file.Name, path)
+			//logger.Printf("extracting %s to %s\n", file.Name, path)
 			_, err = io.Copy(f, fr)
 			if err != nil {
-				return target, err
+				return err
 			}
+		}
+
+		return nil
+	}
+
+	for _, file := range reader.File {
+		err := extract(file)
+		if err != nil {
+			return target, err
 		}
 	}
 
-	log.Printf("extracted %s to %s", dl, target)
+	logger.Printf("extracted %s to %s", dl, target)
 	return target, nil
 }
 
@@ -242,13 +251,13 @@ func InstallGoVersion(version, source string) error {
 		return errors.New("destination already exists")
 	}
 
-	log.Printf("Installing to %s...\n", dest)
+	logger.Printf("Installing to %s...\n", dest)
 	err = os.Rename(source, dest)
 	if err != nil {
 		return err
 	}
 
-	log.Printf("renamed %s to %s", source, dest)
+	logger.Printf("renamed %s to %s", source, dest)
 	return nil
 }
 

@@ -47,43 +47,35 @@ to quickly create a Cobra application.`,
 
 		// todo: clean temp files if an error occurs or deterministically cache them for reuse
 		// download new go version
-		fmt.Printf("Downloading Go version %s...", version)
+		fmt.Printf("Downloading Go version %s...\n", version)
 		dl, err := lib.DownloadRemoteVersion(version)
 		if err != nil {
-			fmt.Println()
 			return err
-		} else {
-			fmt.Println(" Done!")
 		}
+		fmt.Println("Done!")
 
 		// extract new go version
-		fmt.Print("Extracting...")
+		fmt.Println("Extracting...")
 		temp, err := lib.ExtractDownloadedGoVersion(dl)
 		if err != nil {
-			fmt.Println()
 			return err
-		} else {
-			fmt.Println(" Done!")
 		}
+		fmt.Println("Done!")
 
-		fmt.Print("Installing...")
+		fmt.Println("Installing...")
 		err = lib.InstallGoVersion(version, temp)
 		if err != nil {
-			fmt.Println()
 			return err
-		} else {
-			fmt.Println(" Done!")
 		}
+		fmt.Println("Done!")
 
 		// clean download from temp directory
-		fmt.Print("Cleaning up...")
+		fmt.Println("Cleaning up...")
 		err = os.Remove(dl)
 		if err != nil {
-			fmt.Println()
 			return err
-		} else {
-			fmt.Println(" Done!")
 		}
+		fmt.Println("Done!")
 
 		fmt.Printf("Go version %s successfully installed!\n", version)
 		return nil
