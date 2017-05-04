@@ -1,6 +1,6 @@
 # Change Log
 
-## 0.6.0
+## 0.6.0 - 2017-05-04
 ### Added
 - `govm use` will spawn a UAC prompt to request elevation if necessary
 
