@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.7.0 - 2017-05-05
+### Added
+- Implemented support for using a different folder (other than `C:/`) for Go installations
+
 ## 0.6.0 - 2017-05-04
 ### Added
 - `govm use` will spawn a UAC prompt to request elevation if necessary

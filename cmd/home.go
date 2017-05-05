@@ -4,13 +4,12 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
-	"github.com/yi-jiayu/govm/lib"
 )
 
-// gorootCmd represents the goroot command
-var gorootCmd = &cobra.Command{
-	Use:   "root [goroot]",
-	Short: "Get or set the current GOROOT",
+// homeCmd represents the home command
+var homeCmd = &cobra.Command{
+	Use:   "home [path]",
+	Short: "Get or set the current govm home",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -20,10 +19,14 @@ to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
 		switch len(args) {
 		case 0:
-			// fixme: this does not show the actual value of goroot but the normalised value
-			fmt.Printf("GOROOT is currently set to: %s\n", lib.Goroot())
+			home, err := cmd.Flags().GetString("govm_home")
+			if err != nil {
+				fmt.Printf("An error occured: err %v\n", err)
+			}
+
+			fmt.Printf("govm home: %s\n", home)
 		case 1:
-			fmt.Printf("You are trying to set GOROOT to: %s\n", args[0])
+			fmt.Printf("Setting govm home to %s...\n", args[0])
 			fmt.Println("not implemented")
 		default:
 			cmd.Usage()
@@ -32,15 +35,16 @@ to quickly create a Cobra application.`,
 }
 
 func init() {
-	RootCmd.AddCommand(gorootCmd)
+	RootCmd.AddCommand(homeCmd)
 
 	// Here you will define your flags and configuration settings.
 
 	// Cobra supports Persistent Flags which will work for this command
 	// and all subcommands, e.g.:
-	// gorootCmd.PersistentFlags().String("foo", "", "A help for foo")
+	// homeCmd.PersistentFlags().String("foo", "", "A help for foo")
 
 	// Cobra supports local flags which will only run when this command
 	// is called directly, e.g.:
-	// gorootCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+	// homeCmd.Flags().BoolP("toggle", "t", false, "Help message for toggle")
+
 }

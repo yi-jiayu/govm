@@ -22,6 +22,12 @@ to quickly create a Cobra application.`,
 			return cmd.Usage()
 		}
 
+		// get destination directory for govm install
+		searchDir, err := cmd.Flags().GetString("govm_home")
+		if err != nil {
+			return err
+		}
+
 		version := args[0]
 
 		// validate version
@@ -31,7 +37,7 @@ to quickly create a Cobra application.`,
 		}
 
 		// check if version is actually installed
-		ivs, err := lib.InstalledGoVersions()
+		ivs, err := lib.InstalledGoVersions(searchDir)
 		if err != nil {
 			return err
 		}
@@ -50,7 +56,7 @@ to quickly create a Cobra application.`,
 		}
 
 		// check if version is the currently active Go installation
-		cv, err := lib.CurrentGoVersion()
+		cv, err := lib.CurrentGoVersion(searchDir)
 		if err != nil {
 			return err
 		}

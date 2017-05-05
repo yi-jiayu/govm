@@ -14,13 +14,15 @@ import (
 )
 
 const (
-	GOROOT = "C:/Go"
+	GOROOT = "C:\\Go"
 )
 
 var (
 	goroot = Goroot()
 
-	PermissionDenied = errors.New("permission denied")
+	ErrNotManaged       = errors.New("not managed")
+	ErrNotASymlink      = errors.New("not a symlink")
+	ErrPermissionDenied = errors.New("permission denied")
 )
 
 func Goroot() string {
@@ -49,7 +51,7 @@ func CreateSymbolicLink(path, target string) error {
 	err := cmd.Run()
 	if err != nil {
 		if strings.Contains(stderr.String(), "You do not have sufficient privilege to perform this operation.") {
-			return PermissionDenied
+			return ErrPermissionDenied
 		} else {
 			return err
 		}
@@ -74,17 +76,16 @@ func CreateSymbolicLinkWithElevation(path, target string) error {
 	return nil
 }
 
-func InstalledGoVersions() ([]string, error) {
+func InstalledGoVersions(searchDir string) ([]string, error) {
 	ivs := []string{}
 
-	abs, err := filepath.Abs(goroot)
+	searchDir, err := filepath.Abs(searchDir)
 	if err != nil {
 		return ivs, err
 	}
 
-	// look for folders in (dirname goroot) starting with "Go"
-	dirname := filepath.Dir(abs)
-	files, err := ioutil.ReadDir(dirname)
+	// look for folders in searchDir starting with "Go"
+	files, err := ioutil.ReadDir(searchDir)
 	if err != nil {
 		return ivs, err
 	}
@@ -100,65 +101,65 @@ func InstalledGoVersions() ([]string, error) {
 	return ivs, nil
 }
 
-func CurrentGoVersion() (string, error) {
-	// CurrentGoVersion is only valid if goroot is a directory symlink pointing to a sibling Go$VERSION directory
+// Checks if GOROOT is a directory symlink pointing to a Go installation inside GOVM_HOME, returning the version string
+// of the Go installation it points at.
+// Returns the empty string if GOROOT does not exist
+// Returns ErrNotASymlink if GOROOT is not a symlink
+// Returns ErrNotManaged if GOROOT does not point inside GOVM_HOME but is a symlink
+//
+// If err == ErrNotManaged, GOROOT can still be safely deleted and relinked.
+func CurrentGoVersion(searchDir string) (string, error) {
+	var current string
+
+	searchDir, err := filepath.Abs(searchDir)
+	if err != nil {
+		return current, err
+	}
+
 	// 1. check if goroot is a symlink
 	// 2. check if goroot's target is a directory
-	// 3. check if goroot's target is a sibling directory
 	// 4. check if goroot's target is in InstalledGoVersions()
-	var cv string
 
 	fi, err := os.Lstat(goroot)
 	if err != nil {
 		// if goroot does not exist, we consider it as no current Go version and safe to create a new symlink
 		if os.IsNotExist(err) {
-			cv = ""
-			return cv, nil
+			current = ""
+			return current, nil
 		} else {
-			return cv, err
+			return current, err
 		}
 	}
 
 	if !IsSymlink(fi) {
-		return cv, errors.New("GOROOT is not a symlink")
-	}
-
-	p, err := filepath.EvalSymlinks(goroot)
-	if err != nil {
-		return cv, err
-	}
-
-	target, err := filepath.Abs(p)
-	if err != nil {
-		return cv, err
-	}
-
-	fi, err = os.Stat(target)
-	if err != nil {
-		return cv, err
+		return current, ErrNotASymlink
 	}
 
 	if !fi.IsDir() {
-		return cv, errors.New("GOROOT is not a directory symlink")
+		return current, ErrNotManaged
 	}
 
-	dirname := filepath.Dir(goroot)
-	if filepath.Dir(target) == dirname {
-		cv = filepath.Base(target)[2:]
+	target, err := filepath.EvalSymlinks(goroot)
+	if err != nil {
+		return current, err
+	}
 
-		ivs, err := InstalledGoVersions()
+	if filepath.Dir(searchDir) == filepath.Dir(target) {
+		current = filepath.Base(target)[2:]
+
+		ivs, err := InstalledGoVersions(searchDir)
 		if err != nil {
-			return cv, err
+			return current, err
 		}
 
 		for _, iv := range ivs {
-			if cv == iv {
-				return cv, nil
+			if current == iv {
+				return current, nil
 			}
 		}
 	}
 
-	return cv, errors.New("GOROOT does not point to an installed Go version")
+	return current, ErrNotManaged
 }
 
 func GoVersionOutput() (string, error) {
@@ -175,34 +176,33 @@ func GoVersionOutput() (string, error) {
 	return string(output), nil
 }
 
-func SwitchGoVersion(tv string) error {
-	abs, err := filepath.Abs(goroot)
+func SwitchGoVersion(version, searchDir string) error {
+	gr, err := filepath.Abs(goroot)
 	if err != nil {
 		return err
 	}
 
-	cv, err := CurrentGoVersion()
-	if err != nil {
+	cv, err := CurrentGoVersion(searchDir)
+	if err != nil && err != ErrNotManaged {
 		return err
 	}
 
 	if cv != "" {
 		// delete current Go symlink
-		cmd := exec.Command("cmd", fmt.Sprintf("/c rmdir %s", abs))
-
-		err = cmd.Run()
+		err := os.Remove(gr)
 		if err != nil {
 			return err
 		}
 	}
 
-	// create new go symlink
-	target := filepath.Join(filepath.Dir(abs), "Go"+tv)
+	target, err := filepath.Abs(searchDir)
+	target = filepath.Join(searchDir, "Go"+version)
 
-	err = CreateSymbolicLink(abs, target)
+	// create new go symlink
+	err = CreateSymbolicLink(gr, target)
 	if err != nil {
-		if err == PermissionDenied {
-			err := CreateSymbolicLinkWithElevation(abs, target)
+		if err == ErrPermissionDenied {
+			err := CreateSymbolicLinkWithElevation(gr, target)
 			if err != nil {
 				return err
 			}
@@ -278,12 +278,12 @@ func ExtractDownloadedGoVersion(dl string) (string, error) {
 	return target, nil
 }
 
-func InstallGoVersion(version, source string) error {
+func InstallGoVersion(version, source, destdir string) error {
 	if !ValidateSemver(version) {
 		return errors.New("invalid version string")
 	}
 
-	dest := filepath.Join(filepath.Dir(goroot), "Go"+version)
+	dest := filepath.Join(destdir, "Go"+version)
 	_, err := os.Lstat(dest)
 	if err == nil || !os.IsNotExist(err) {
 		return errors.New("destination already exists")

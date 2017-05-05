@@ -7,6 +7,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"github.com/yi-jiayu/govm/lib"
+	"path/filepath"
 )
 
 var cfgFile string
@@ -63,8 +64,9 @@ func init() {
 	// Cobra supports Persistent Flags, which, if defined here,
 	// will be global for your application.
 
-	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is $HOME/.govm.yaml)")
+	RootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "config file (default is ~/.govm/.govm.yaml)")
 	RootCmd.PersistentFlags().BoolP("verbose", "v", false, "Print additional output")
+	RootCmd.PersistentFlags().String("govm_home", "C:\\", "Set storage location for Go installations")
 
 	// Cobra also supports local flags, which will only run
 	// when this action is called directly.
@@ -77,9 +79,14 @@ func initConfig() {
 		viper.SetConfigFile(cfgFile)
 	}
 
-	viper.SetConfigName(".govm")           // name of config file (without extension)
-	viper.AddConfigPath(os.Getenv("HOME")) // adding home directory as first search path
-	viper.AutomaticEnv()                   // read in environment variables that match
+	viper.SetConfigName(".govm")                                          // name of config file (without extension)
+	viper.AddConfigPath(".")                                              // search in current working directory for config file
+	viper.AddConfigPath(filepath.Join(os.Getenv("USERPROFILE"), ".govm")) // adding USERPROFILE/.govm as second search path
+
+	viper.SetEnvPrefix("govm")
+	viper.AutomaticEnv() // read in environment variables that match
+
+	viper.BindPFlag("govm_home", RootCmd.Flags().Lookup("govm_home"))
 
 	// If a config file is found, read it in.
 	if err := viper.ReadInConfig(); err == nil {
