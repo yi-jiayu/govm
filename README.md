@@ -27,16 +27,13 @@ govm currently provides the following commands:
 Yes, I realise that there's not much need to manage multiple Go versions, but for a point in time I was struggling with various errors while building a Go on Google App Engine Standard Environment project and I thought that maybe using Go 1.6, which Go on Google App Engine runs, might help (it didn't).
 
 ## Assumptions
-In order to limit the amount of magic done by this program, govm makes a few assumptions about your environment and will work best when these assumptions hold. govm tries to be conservative and not do anything if these assumptions are wrong, but certain assumptions such as assuming `basename $GOROOT` to be "Go" are hardcoded.
-
-For best results,
-1. Set your `GOROOT` to `C:/Go` or leave it unset.
-2. Add `GOROOT/bin` to your `PATH`.
-
-## Setup
-govm searches in the `dirname $GOROOT` directory for sibling directories to `GOROOT` with names matching `Go*` such as `Go1.6.4` or `Go1.8`. For example, if `GOROOT` is `C:/Go`, govm expects `C:/Go1.6.4` to contain Go version 1.6.4 and `C:/Go1.8` to contain Go version 1.8.
+In order to limit the amount of magic done by this program, govm will not set any environment variables. You need to make sure that you set (or do not set) GOROOT and add GOROOT/bin to your PATH.
 
 ## How it works
-All govm does is create a symlink at `GOROOT` which points to a folder containing a specific Go version. For example, assuming `GOROOT` is `C:/Go`, to use Go version 1.8 govm will create a directory symlink at `C:/Go` pointed at `C:/Go1.8`, which should contain Go version 1.8. When switching between Go versions, govm will delete the current `GOROOT` symlink and create a new one to the target version, but only if `GOROOT` is indeed a symlink pointing at a Go installation. govm simply execs `cmd /c mklink /d` to create directory symlinks, and `cmd /c rmdir` to delete directory symlinks.
+govm downloads and saves Go binary installations to the govm install dir folder (default: `C:/`) as `GOVM_INSTALL_DIR/Go$version` and creates symlinks from GOROOT to the current version in use. If administrator permission in required to create a symlink, govm will trigger a UAC prompt.
+
+For example, assuming `GOROOT` is `C:/Go` and the govm install dir is `C:/`, to use Go version 1.8 govm will create a directory symlink at `C:/Go` pointed at `C:/Go1.8`, which should contain Go version 1.8. When switching between Go versions, govm will delete the current `GOROOT` symlink and create a new one to the target version.
+
+govm uses `cmd /c mklink /d` to create symlinks to Go installations.
 
 ## [Change log](CHANGELOG.md)
