@@ -291,14 +291,19 @@ func InstallGoVersion(version, source, destdir string) error {
 	return nil
 }
 
-func UninstallGoVersion(version string) error {
+func UninstallGoVersion(version, searchDir string) error {
 	if !ValidateSemver(version) {
 		return errors.New("invalid version string")
 	}
 
-	path := filepath.Join(filepath.Dir(goroot), "Go"+version)
+	searchDir, err := filepath.Abs(searchDir)
+	if err != nil {
+		return err
+	}
 
-	err := os.RemoveAll(path)
+	path := filepath.Join(searchDir, "Go"+version)
+
+	err = os.RemoveAll(path)
 	if err != nil {
 		return err
 	}

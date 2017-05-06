@@ -1,5 +1,9 @@
 # Change Log
 
+## 0.7.2 - 2017-05-06
+### Fixed
+- Make `govm uninstall` removes Go installations from the govm install dir rather than `dirname GOROOT`.
+
 ## 0.7.1 - 2017-05-06
 ### Fixed
 - Fixed `install-dir` option in config file not working.
