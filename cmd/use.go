@@ -3,8 +3,14 @@ package cmd
 import (
 	"fmt"
 
+	"bufio"
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/yi-jiayu/govm/lib"
+	"log"
+	"os"
+	"os/exec"
+	"strings"
 )
 
 // useCmd represents the use command
@@ -17,20 +23,24 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
-		// get destination directory for govm install
-		searchDir, err := cmd.Flags().GetString("govm_home")
-		if err != nil {
-			return err
-		}
-
-		cv, err := lib.CurrentGoVersion(searchDir)
-		if err != nil {
-			return err
-		}
-
+	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) != 1 {
-			return cmd.Usage()
+			cmd.Usage()
+			return
+		}
+
+		// get destination directory for govm install
+		installDir := viper.GetString("install-dir")
+
+		ivs, err := lib.InstalledGoVersions(installDir)
+		if err != nil {
+			log.Fatalf("error: %v", err)
+		}
+
+		if len(ivs) == 0 {
+			fmt.Printf("govm did not find any Go installations in the current govm install directory (%s).\n", installDir)
+			fmt.Println("You can run \"govm install [version]\" and \"govm use [version]\" to install and use a new Go version.")
+			return
 		}
 
 		version := args[0]
@@ -38,24 +48,29 @@ to quickly create a Cobra application.`,
 		// validate version
 		if !lib.ValidateSemver(version) {
 			fmt.Printf("%s is not a valid Go version string.\n", version)
-			return nil
+			return
+		}
+
+		var alreadyExists bool
+		cv, err := lib.CurrentGoVersion(installDir)
+		if err != nil && err != lib.ErrNotManaged {
+			if err == lib.ErrNotASymlink {
+				alreadyExists = true
+			} else {
+				log.Fatalf("error: %v", err)
+			}
 		}
 
 		gv, err := lib.GoVersionOutput()
 		if err != nil {
-			return err
+			gv = "not applicable"
 		}
-
-		fmt.Printf("Now using: %s", string(gv))
-		fmt.Printf("You are trying to switch to Go version: %s\n", version)
-
-		vs, err := lib.InstalledGoVersions(searchDir)
-		if err != nil {
-			return err
-		}
+		gv = strings.TrimPrefix(gv, "go version ")
+		gv = strings.TrimSpace(gv)
+		fmt.Printf("Current Go version: %s\n", gv)
 
 		found := false
-		for _, v := range vs {
+		for _, v := range ivs {
 			if v == version {
 				found = true
 				break
@@ -65,29 +80,58 @@ to quickly create a Cobra application.`,
 		if found {
 			if cv == version {
 				fmt.Printf("Go version %s is already the currently active version.\n", cv)
-
-				return nil
+				return
 			} else {
+				if alreadyExists {
+					fmt.Printf("GOROOT (%s) already exists but is not a symlink to a Go installation in the current govm install dir (%s).\n", lib.Goroot(), installDir)
+					fmt.Print("Do you want govm to remove and relink GOROOT? (y/N) ")
+
+					r := bufio.NewReader(os.Stdin)
+					input, err := r.ReadString('\n')
+					if err != nil {
+						log.Fatalf("error: %v", err)
+					}
+
+					input = strings.TrimSpace(input)
+
+					if input == "y" || input == "Y" || input == "yes" {
+						// todo: prompt for confirmation if goroot is a non-empty directory
+						fmt.Printf("Removing %s...\n", lib.Goroot())
+						err := os.RemoveAll(lib.Goroot())
+						if err != nil {
+							log.Fatalf("error: %v", err)
+						}
+					} else {
+						fmt.Println("Aborting...")
+						os.Exit(0)
+					}
+				}
+
 				fmt.Printf("Changing to Go version %s...\n", version)
 
-				err := lib.SwitchGoVersion(version, searchDir)
+				err := lib.SwitchGoVersion(version, installDir)
 				if err != nil {
-					return err
+					log.Fatalf("error: %v", err)
 				}
 
 				gv, err := lib.GoVersionOutput()
 				if err != nil {
-					return err
+					if e, ok := err.(*exec.ExitError); ok {
+						log.Fatalf("error: %s", string(e.Stderr))
+					} else {
+						log.Fatalf("%v", err)
+					}
 				}
+				gv = strings.TrimPrefix(gv, "go version ")
+				gv = strings.TrimSpace(gv)
 
-				fmt.Printf("Now using: %s", string(gv))
-
-				return nil
+				fmt.Printf("Current Go version: %s", string(gv))
+				return
 			}
 		} else {
 			fmt.Printf("Go version %s is not currently installed.\n", version)
-
-			return nil
+			fmt.Printf("Use \"govm install %s\" to install it first.\n", version)
+			return
 		}
 	},
 }

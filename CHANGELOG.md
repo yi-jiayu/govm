@@ -1,5 +1,10 @@
 # Change Log
 
+## 0.7.1 - 2017-05-06
+### Fixed
+- Fixed `install-dir` option in config file not working.
+- Improved error handling for `govm use` and `govm list`.
+
 ## 0.7.0 - 2017-05-05
 ### Added
 - Implemented support for using a different folder (other than `C:/`) for Go installations

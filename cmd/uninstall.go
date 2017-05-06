@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/yi-jiayu/govm/lib"
 )
 
@@ -23,10 +24,7 @@ to quickly create a Cobra application.`,
 		}
 
 		// get destination directory for govm install
-		searchDir, err := cmd.Flags().GetString("govm_home")
-		if err != nil {
-			return err
-		}
+		installDir := viper.GetString("install-dir")
 
 		version := args[0]
 
@@ -37,7 +35,7 @@ to quickly create a Cobra application.`,
 		}
 
 		// check if version is actually installed
-		ivs, err := lib.InstalledGoVersions(searchDir)
+		ivs, err := lib.InstalledGoVersions(installDir)
 		if err != nil {
 			return err
 		}
@@ -56,7 +54,7 @@ to quickly create a Cobra application.`,
 		}
 
 		// check if version is the currently active Go installation
-		cv, err := lib.CurrentGoVersion(searchDir)
+		cv, err := lib.CurrentGoVersion(installDir)
 		if err != nil {
 			return err
 		}

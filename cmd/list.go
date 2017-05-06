@@ -4,7 +4,9 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/yi-jiayu/govm/lib"
+	"log"
 )
 
 // listCmd represents the list command
@@ -18,32 +20,37 @@ and usage of using your command. For example:
 Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
-	RunE: func(cmd *cobra.Command, args []string) error {
+	Run: func(cmd *cobra.Command, args []string) {
 		// get destination directory for govm install
-		searchDir, err := cmd.Flags().GetString("govm_home")
+		installDir := viper.GetString("install-dir")
+
+		vs, err := lib.InstalledGoVersions(installDir)
 		if err != nil {
-			return err
+			log.Fatalf("error: %v", err)
 		}
 
-		vs, err := lib.InstalledGoVersions(searchDir)
+		cv, err := lib.CurrentGoVersion(installDir)
 		if err != nil {
-			return err
+			cv = ""
 		}
 
-		cv, err := lib.CurrentGoVersion(searchDir)
-		if err != nil {
-			return err
-		}
-
-		for _, v := range vs {
-			if v == cv {
-				fmt.Printf("  * %s\n", v)
-			} else {
-				fmt.Printf("    %s\n", v)
+		if len(vs) > 0 {
+			if cv == "" {
+				fmt.Printf("govm did found the following Go installations in the current govm install directory (%s).\n", installDir)
+				fmt.Println("You can run \"govm use [version]\" to use one of them.")
 			}
-		}
 
-		return nil
+			for _, v := range vs {
+				if v == cv {
+					fmt.Printf("  * %s\n", v)
+				} else {
+					fmt.Printf("    %s\n", v)
+				}
+			}
+		} else {
+			fmt.Printf("govm did not find any Go installations in the current govm install directory (%s).\n", installDir)
+			fmt.Println("You can run \"govm install [version]\" and \"govm use [version]\" to install and use a new Go version.")
+		}
 	},
 }
 

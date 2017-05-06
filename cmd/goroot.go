@@ -4,13 +4,14 @@ import (
 	"fmt"
 
 	"github.com/spf13/cobra"
+	"github.com/spf13/viper"
 	"github.com/yi-jiayu/govm/lib"
 )
 
 // gorootCmd represents the goroot command
 var gorootCmd = &cobra.Command{
-	Use:   "root [goroot]",
-	Short: "Get or set the current GOROOT",
+	Use:   "root",
+	Short: "Get the current GOROOT and govm install dir",
 	Long: `A longer description that spans multiple lines and likely contains examples
 and usage of using your command. For example:
 
@@ -18,16 +19,11 @@ Cobra is a CLI library for Go that empowers applications.
 This application is a tool to generate the needed files
 to quickly create a Cobra application.`,
 	Run: func(cmd *cobra.Command, args []string) {
-		switch len(args) {
-		case 0:
-			// fixme: this does not show the actual value of goroot but the normalised value
-			fmt.Printf("GOROOT is currently set to: %s\n", lib.Goroot())
-		case 1:
-			fmt.Printf("You are trying to set GOROOT to: %s\n", args[0])
-			fmt.Println("not implemented")
-		default:
-			cmd.Usage()
-		}
+		// fixme: this does not show the actual value of goroot but the normalised value
+		fmt.Printf("GOROOT is currently set to: %s\n", lib.Goroot())
+
+		installDir := viper.GetString("install-dir")
+		fmt.Printf("The current govm install dir is: %s\n", installDir)
 	},
 }
 

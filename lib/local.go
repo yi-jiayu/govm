@@ -165,10 +165,8 @@ func CurrentGoVersion(searchDir string) (string, error) {
 func GoVersionOutput() (string, error) {
 	var gv string
 
-	cmd2 := exec.Command("go", "version")
-	cmd2.Stderr = os.Stderr
-
-	output, err := cmd2.Output()
+	cmd := exec.Command("go", "version")
+	output, err := cmd.Output()
 	if err != nil {
 		return gv, err
 	}
@@ -176,23 +174,17 @@ func GoVersionOutput() (string, error) {
 	return string(output), nil
 }
 
+// Removes the current GOROOT if it exists, then creates a new symlink at GOROOT to searchDir/Go<version>
 func SwitchGoVersion(version, searchDir string) error {
 	gr, err := filepath.Abs(goroot)
 	if err != nil {
 		return err
 	}
 
-	cv, err := CurrentGoVersion(searchDir)
-	if err != nil && err != ErrNotManaged {
+	// delete current goroot
+	err = os.RemoveAll(gr)
+	if err != nil {
 		return err
-	}
-
-	if cv != "" {
-		// delete current Go symlink
-		err := os.Remove(gr)
-		if err != nil {
-			return err
-		}
 	}
 
 	target, err := filepath.Abs(searchDir)
