@@ -1,3 +1,5 @@
+[![Go Report Card](https://goreportcard.com/badge/github.com/yi-jiayu/govm)](https://goreportcard.com/report/github.com/yi-jiayu/govm)
+
 # govm
 Manage multiple Go installations on Windows
 
